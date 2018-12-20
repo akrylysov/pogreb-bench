@@ -6,12 +6,12 @@ pogreb-bench is a key-value store benchmarking tool.
 
 Currently it supports:
 
-* [pogreb](https://github.com/akrylysov/pogreb)
-* [goleveldb](https://github.com/syndtr/goleveldb/)
-* [bolt](https://github.com/boltdb/bolt)
-* [badgerdb](https://github.com/dgraph-io/badger)
-* [slowpoke](https://github.com/recoilme/slowpoke)
-* [pudge](https://github.com/recoilme/pudge)
+* [pogreb](https://github.com/akrylysov/pogreb) Embedded key-value store for read-heavy workloads written in Go
+* [goleveldb](https://github.com/syndtr/goleveldb/) LevelDB key/value database in Go.
+* [bolt](https://github.com/boltdb/bolt) An embedded key/value database for Go.
+* [badgerdb](https://github.com/dgraph-io/badger) Fast key-value DB in Go
+* [slowpoke](https://github.com/recoilme/slowpoke) Low-level key/value store in pure Go
+* [pudge](https://github.com/recoilme/pudge) Fast and simple key/value store written using Go's standard library
 
 
 Some tests, MacBook Pro (Retina, 13-inch, Early 2015)

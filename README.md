@@ -52,3 +52,18 @@ Concurrency: 10
 | 10M Put, ops/sec      | 95497     | 70840    | 42116  |
 | 10M Get, ops/sec      | 89390     | 202284   | 617683 |
 | FileSize,Mb           | 608       | 1870     | 686    |
+
+
+### Round 4
+Number of keys: 10000000
+Key size: 8
+Value size: 16
+Concurrency: 100
+
+
+|                       | goleveldb | badgerdb | pudge  |
+|-----------------------|-----------|----------|--------|
+| 10M (Put+Get), seconds| 165       | 120      | 243    |
+| 10M Put, ops/sec      | 122933    | 135709   | 43843  |
+| 10M Get, ops/sec      | 118722    | 214981   | 666067 |
+| FileSize,Mb           | 312       | 1370     | 381    |

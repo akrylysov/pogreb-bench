@@ -4,34 +4,34 @@ import (
 	"github.com/dgraph-io/badger"
 )
 
-func newBadgerdb(path string) (kvEngine, error) {
+func newBadger(path string) (kvEngine, error) {
 	opts := badger.DefaultOptions
 	opts.SyncWrites = false
 	opts.Dir = path
 	opts.ValueDir = path
 	db, err := badger.Open(opts)
-	return &badgerdbEngine{db: db, path: path}, err
+	return &badgerEngine{db: db, path: path}, err
 }
 
-type badgerdbEngine struct {
+type badgerEngine struct {
 	path string
 	db   *badger.DB
 }
 
-func (db *badgerdbEngine) Put(key []byte, value []byte) error {
+func (db *badgerEngine) Put(key []byte, value []byte) error {
 	return db.db.Update(func(tx *badger.Txn) error {
 		return tx.Set(key, value)
 	})
 }
 
-func (db *badgerdbEngine) Get(key []byte) ([]byte, error) {
+func (db *badgerEngine) Get(key []byte) ([]byte, error) {
 	var val []byte
 	err := db.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(key)
 		if err != nil {
 			return err
 		}
-		v, err := item.Value()
+		v, err := item.ValueCopy(nil)
 		if err != nil {
 			return err
 		}
@@ -41,10 +41,10 @@ func (db *badgerdbEngine) Get(key []byte) ([]byte, error) {
 	return val, err
 }
 
-func (db *badgerdbEngine) Close() error {
+func (db *badgerEngine) Close() error {
 	return db.db.Close()
 }
 
-func (db *badgerdbEngine) FileSize() (int64, error) {
+func (db *badgerEngine) FileSize() (int64, error) {
 	return dirSize(db.path)
 }

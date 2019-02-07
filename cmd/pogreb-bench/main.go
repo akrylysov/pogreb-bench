@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	engine       = flag.String("e", "pogreb", "database engine name. pogreb, goleveldb, bolt, badgerdb, pudge and slowpoke")
+	engine       = flag.String("e", "pogreb", "database engine name. pogreb, goleveldb, bolt, badgerdb, pudge and slowpoke, buntdb")
 	numKeys      = flag.Int("n", 100000, "number of keys")
 	minKeySize   = flag.Int("mink", 16, "minimum key size")
 	maxKeySize   = flag.Int("maxk", 64, "maximum key size")

@@ -22,6 +22,7 @@ var engines = map[string]engineCtr{
 	"badgerdb":  newBadgerdb,
 	"slowpoke":  newSlowpoke,
 	"pudge":     newPudge,
+	"buntdb":    newBunt,
 }
 
 func getEngineCtr(name string) (engineCtr, error) {

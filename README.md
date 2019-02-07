@@ -80,17 +80,32 @@ Concurrency: 100
 
 
 ### Test 5 (switch to bbolt from coreos)
-/pogreb-bench -c 100 -d bench -e bolt -n 2000000
 Number of keys: 2000000
-Minimum key size: 16, maximum key size: 64
-Minimum value size: 128, maximum value size: 512
+Minimum key size: 8, maximum key size: 8
+Minimum value size: 16, maximum value size: 16
 Concurrency: 100
-Running bolt benchmark...
 
+pogreb-bench -c 100 -d bench -e pudge -n 2000000 -mink 8 -maxk 8 -minv 16 -maxv 16
 
 |                       |  bbolt    | pudge  |
 |-----------------------|-----------|--------|
-| 2M (Put+Get), seconds |           |        |
-| 2M Put, ops/sec       |           |        |
-| 2M Get, ops/sec       |           |        |
-| FileSize,Mb           |           |        |
+| 2M (Put+Get), seconds | 186       | 45     |
+| 2M Put, ops/sec       | 10950     | 46731  |
+| 2M Get, ops/sec       | 539879    | 761240 |
+| FileSize,Mb           | 120       | 76     |
+
+
+### Test 6 (switch to bbolt from coreos)
+Number of keys: 5000000
+Minimum key size: 8, maximum key size: 8
+Minimum value size: 64, maximum value size: 64
+Concurrency: 100
+
+pogreb-bench -c 100 -d bench -e pudge -n 5000000 -mink 8 -maxk 8 -minv 64 -maxv 64
+
+|                       |  bbolt    | pudge  |
+|-----------------------|-----------|--------|
+| 5M (Put+Get), seconds | 515       | 139    |
+| 5M Put, ops/sec       | 9891      | 39402  |
+| 5M Get, ops/sec       | 509562    | 394072 |
+| FileSize,Mb           | 616       | 419    |

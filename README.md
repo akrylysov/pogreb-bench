@@ -8,7 +8,7 @@ Currently it supports:
 
 * [pogreb](https://github.com/akrylysov/pogreb) Embedded key-value store for read-heavy workloads written in Go
 * [goleveldb](https://github.com/syndtr/goleveldb/) LevelDB key/value database in Go.
-* [bolt](https://github.com/boltdb/bolt) An embedded key/value database for Go.
+* [bolt](go.etcd.io/bbolt) An embedded key/value database for Go.
 * [badgerdb](https://github.com/dgraph-io/badger) Fast key-value DB in Go
 * [slowpoke](https://github.com/recoilme/slowpoke) Low-level key/value store in pure Go
 * [pudge](https://github.com/recoilme/pudge) Fast and simple key/value store written using Go's standard library
@@ -77,3 +77,20 @@ Concurrency: 100
 | 10M Put, ops/sec      | 122933    | 135709   | 43843  |
 | 10M Get, ops/sec      | 118722    | 214981   | 666067 |
 | FileSize,Mb           | 312       | 1370     | 381    |
+
+
+### Test 5 (switch to bbolt from coreos)
+/pogreb-bench -c 100 -d bench -e bolt -n 2000000
+Number of keys: 2000000
+Minimum key size: 16, maximum key size: 64
+Minimum value size: 128, maximum value size: 512
+Concurrency: 100
+Running bolt benchmark...
+
+
+|                       |  bbolt    | pudge  |
+|-----------------------|-----------|--------|
+| 2M (Put+Get), seconds |           |        |
+| 2M Put, ops/sec       |           |        |
+| 2M Get, ops/sec       |           |        |
+| FileSize,Mb           |           |        |

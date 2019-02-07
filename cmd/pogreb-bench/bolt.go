@@ -1,14 +1,16 @@
 package main
 
-import (
-	"github.com/boltdb/bolt"
-)
+import bolt "go.etcd.io/bbolt"
 
 var boltBucketName = []byte("benchmark")
 
 type boltEngine struct {
 	db   *bolt.DB
 	path string
+}
+
+type bb struct {
+	bb *bolt.DB
 }
 
 func newBolt(path string) (kvEngine, error) {

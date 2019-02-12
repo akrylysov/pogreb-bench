@@ -18,7 +18,7 @@ type engineCtr func(string) (kvEngine, error)
 var engines = map[string]engineCtr{
 	"pogreb":    newPogreb,
 	"goleveldb": newGolevelDB,
-	"bolt":      newBolt,
+	"bbolt":     newBbolt,
 	"badger":    newBadger,
 }
 

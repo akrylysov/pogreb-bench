@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v2"
 )
 
 func newBadgerdb(path string) (kvEngine, error) {
@@ -31,11 +31,10 @@ func (db *badgerdbEngine) Get(key []byte) ([]byte, error) {
 		if err != nil {
 			return err
 		}
-		v, err := item.Value()
+		val, err = item.ValueCopy(nil)
 		if err != nil {
 			return err
 		}
-		val = v
 		return nil
 	})
 	return val, err

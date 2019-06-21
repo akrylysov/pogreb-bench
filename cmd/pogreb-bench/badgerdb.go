@@ -10,18 +10,18 @@ func newBadgerdb(path string) (kvEngine, error) {
 	opts.Dir = path
 	opts.ValueDir = path
 	db, err := badger.Open(opts)
-	return &badgerdbEngine{db: db, path: path}, err
+	wb := db.NewWriteBatch()
+	return &badgerdbEngine{db: db, path: path, wb: wb}, err
 }
 
 type badgerdbEngine struct {
 	path string
 	db   *badger.DB
+	wb   *badger.WriteBatch
 }
 
 func (db *badgerdbEngine) Put(key []byte, value []byte) error {
-	return db.db.Update(func(tx *badger.Txn) error {
-		return tx.Set(key, value)
-	})
+	return db.wb.Set(key, value)
 }
 
 func (db *badgerdbEngine) Get(key []byte) ([]byte, error) {
@@ -41,6 +41,9 @@ func (db *badgerdbEngine) Get(key []byte) ([]byte, error) {
 }
 
 func (db *badgerdbEngine) Close() error {
+	if err := db.wb.Flush(); err != nil {
+		return err
+	}
 	return db.db.Close()
 }
 

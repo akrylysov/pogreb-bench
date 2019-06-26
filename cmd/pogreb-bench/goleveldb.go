@@ -7,8 +7,9 @@ import (
 )
 
 type goleveldbEngine struct {
-	db   *leveldb.DB
-	path string
+	db    *leveldb.DB
+	path  string
+	batch *leveldb.Batch
 }
 
 func newGolevelDB(path string) (kvEngine, error) {
@@ -18,11 +19,13 @@ func newGolevelDB(path string) (kvEngine, error) {
 		return nil, err
 	}
 	err = db.CompactRange(util.Range{})
-	return &goleveldbEngine{db: db, path: path}, err
+	batch := new(leveldb.Batch)
+	return &goleveldbEngine{db: db, path: path, batch: batch}, err
 }
 
 func (db *goleveldbEngine) Put(key []byte, value []byte) error {
-	return db.db.Put(key, value, nil)
+	db.batch.Put(key, value)
+	return nil
 }
 
 func (db *goleveldbEngine) Get(key []byte) ([]byte, error) {
@@ -30,6 +33,9 @@ func (db *goleveldbEngine) Get(key []byte) ([]byte, error) {
 }
 
 func (db *goleveldbEngine) Close() error {
+	if err := db.db.Write(db.batch, nil); err != nil {
+		return err
+	}
 	return db.db.Close()
 }
 

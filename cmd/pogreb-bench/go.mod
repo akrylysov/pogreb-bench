@@ -5,7 +5,7 @@ go 1.12
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190306092124-e2d15f34fcf9 // indirect
 	github.com/akrylysov/pogreb v0.0.0-20190508001208-2f2ea7f941ff
-	github.com/dgraph-io/badger/v2 v2.0.0-20190620211019-41d170b5158f
+	github.com/dgraph-io/badger/v2 v2.0.0-20190621164610-46698910835f
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
 	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/pkg/errors v0.8.1 // indirect

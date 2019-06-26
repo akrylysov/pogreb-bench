@@ -27,7 +27,7 @@ func newBolt(path string) (kvEngine, error) {
 }
 
 func (db *boltEngine) Put(key []byte, value []byte) error {
-	return db.db.Update(func(tx *bolt.Tx) error {
+	return db.db.Batch(func(tx *bolt.Tx) error {
 		b := tx.Bucket(boltBucketName)
 		return b.Put(key, value)
 	})

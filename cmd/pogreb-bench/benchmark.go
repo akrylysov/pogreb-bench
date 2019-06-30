@@ -6,10 +6,10 @@ import (
 	"math/rand"
 	"path"
 	"runtime"
-	"sync"
 	"time"
 
 	"github.com/akrylysov/pogreb"
+	"golang.org/x/sync/errgroup"
 )
 
 func randKey(minL int, maxL int) string {
@@ -53,23 +53,21 @@ func generateKeys(count int, minL int, maxL int) [][]byte {
 }
 
 func concurrentBatch(keys [][]byte, concurrency int, cb func(gid int, batch [][]byte) error) error {
-	wg := &sync.WaitGroup{}
+	eg := &errgroup.Group{}
 	batchSize := len(keys) / concurrency
-	wg.Add(concurrency)
-	var err error
 	for i := 0; i < concurrency; i++ {
 		batchStart := i * batchSize
 		batchEnd := (i + 1) * batchSize
 		if batchEnd > len(keys) {
 			batchEnd = len(keys)
 		}
-		go func(gid int, batch [][]byte) {
-			err = cb(gid, batch)
-			wg.Done()
-		}(i, keys[batchStart:batchEnd])
+		gid := i
+		batch := keys[batchStart:batchEnd]
+		eg.Go(func() error {
+			return cb(gid, batch)
+		})
 	}
-	wg.Wait()
-	return err
+	return eg.Wait()
 }
 
 func printStats(db *pogreb.DB) {
@@ -78,7 +76,7 @@ func printStats(db *pogreb.DB) {
 
 func showProgress(gid int, i int, total int) {
 	if i%50000 == 0 {
-		fmt.Printf("Goroutine %d. Processed %d from %d items...\n", gid, i, total)
+		fmt.Printf("Goroutine %d. Processed %d of %d items...\n", gid, i, total)
 	}
 }
 

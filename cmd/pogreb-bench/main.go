@@ -41,6 +41,6 @@ func main() {
 	}
 
 	if err := benchmark(*engine, *dir, *numKeys, *minKeySize, *maxKeySize, *minValueSize, *maxValueSize, *concurrency, *progress); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "Error running benchmark: %v\n", err)
 	}
 }

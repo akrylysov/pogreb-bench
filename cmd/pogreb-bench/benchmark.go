@@ -4,13 +4,26 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"path"
+	"os"
+	"path/filepath"
 	"runtime"
 	"time"
 
-	"github.com/akrylysov/pogreb"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/akrylysov/pogreb-bench/kv"
 )
+
+func dirSize(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return err
+	})
+	return size, err
+}
 
 func randKey(minL int, maxL int) string {
 	n := rand.Intn(maxL-minL+1) + minL
@@ -70,49 +83,40 @@ func concurrentBatch(keys [][]byte, concurrency int, cb func(gid int, batch [][]
 	return eg.Wait()
 }
 
-func printStats(db *pogreb.DB) {
-	fmt.Printf("%+v\n", db.Metrics())
-}
-
 func showProgress(gid int, i int, total int) {
 	if i%50000 == 0 {
 		fmt.Printf("Goroutine %d. Processed %d of %d items...\n", gid, i, total)
 	}
 }
 
-func benchmark(engine string, dir string, numKeys int, minKS int, maxKS int, minVS int, maxVS int, concurrency int, progress bool) error {
-	ctr, err := getEngineCtr(engine)
+func benchmark(opts options) error {
+	db, err := kv.NewStore(opts.engine, opts.path)
 	if err != nil {
 		return err
 	}
 
-	dbpath := path.Join(dir, "bench_"+engine)
-	db, err := ctr(dbpath)
-	if err != nil {
-		return err
-	}
+	fmt.Printf("Number of keys: %d\n", opts.numKeys)
+	fmt.Printf("Minimum key size: %d, maximum key size: %d\n", opts.minKeySize, opts.maxKeySize)
+	fmt.Printf("Minimum value size: %d, maximum value size: %d\n", opts.minValueSize, opts.maxValueSize)
+	fmt.Printf("Concurrency: %d\n", opts.concurrency)
+	fmt.Printf("Running %s benchmark...\n", opts.engine)
 
-	fmt.Printf("Number of keys: %d\n", numKeys)
-	fmt.Printf("Minimum key size: %d, maximum key size: %d\n", minKS, maxKS)
-	fmt.Printf("Minimum value size: %d, maximum value size: %d\n", minVS, maxVS)
-	fmt.Printf("Concurrency: %d\n", concurrency)
-	fmt.Printf("Running %s benchmark...\n", engine)
-
-	keys := generateKeys(numKeys, minKS, maxKS)
-	valSrc := make([]byte, maxVS)
+	keys := generateKeys(opts.numKeys, opts.minKeySize, opts.maxKeySize)
+	valSrc := make([]byte, opts.maxValueSize)
 	if _, err := rand.Read(valSrc); err != nil {
 		return err
 	}
 	forceGC()
 
+	// Put.
 	start := time.Now()
-	err = concurrentBatch(keys, concurrency, func(gid int, batch [][]byte) error {
+	err = concurrentBatch(keys, opts.concurrency, func(gid int, batch [][]byte) error {
 		rnd := rand.New(rand.NewSource(int64(rand.Uint64())))
 		for i, k := range batch {
-			if err := db.Put(k, randValue(rnd, valSrc, minVS, maxVS)); err != nil {
+			if err := db.Put(k, randValue(rnd, valSrc, opts.minValueSize, opts.maxValueSize)); err != nil {
 				return err
 			}
-			if progress {
+			if opts.progress {
 				showProgress(gid, i, len(batch))
 			}
 		}
@@ -121,24 +125,25 @@ func benchmark(engine string, dir string, numKeys int, minKS int, maxKS int, min
 	if err != nil {
 		return err
 	}
+
+	endsecs := time.Since(start).Seconds()
+	totalalsecs := endsecs
+	fmt.Printf("Put: %.3f sec, %d ops/sec\n", endsecs, int(float64(opts.numKeys)/endsecs))
+
+	// Reopen DB.
 	if err := db.Close(); err != nil {
 		return err
 	}
-	endsecs := time.Since(start).Seconds()
-	totalalsecs := endsecs
-	fmt.Printf("Put: %.3f sec, %d ops/sec\n", endsecs, int(float64(numKeys)/endsecs))
-	if pdb, ok := db.(*pogreb.DB); ok {
-		printStats(pdb)
-	}
 	shuffle(keys)
-	db, err = ctr(dbpath)
+	db, err = kv.NewStore(opts.engine, opts.path)
 	if err != nil {
 		return err
 	}
 	forceGC()
 
+	// Read.
 	start = time.Now()
-	err = concurrentBatch(keys, concurrency, func(gid int, batch [][]byte) error {
+	err = concurrentBatch(keys, opts.concurrency, func(gid int, batch [][]byte) error {
 		for i, k := range batch {
 			v, err := db.Get(k)
 			if err != nil {
@@ -147,7 +152,7 @@ func benchmark(engine string, dir string, numKeys int, minKS int, maxKS int, min
 			if v == nil {
 				return errors.New("key doesn't exist")
 			}
-			if progress {
+			if opts.progress {
 				showProgress(gid, i, len(batch))
 			}
 		}
@@ -158,15 +163,17 @@ func benchmark(engine string, dir string, numKeys int, minKS int, maxKS int, min
 	}
 	endsecs = time.Since(start).Seconds()
 	totalalsecs += endsecs
-	fmt.Printf("Get: %.3f sec, %d ops/sec\n", endsecs, int(float64(numKeys)/endsecs))
+	fmt.Printf("Get: %.3f sec, %d ops/sec\n", endsecs, int(float64(opts.numKeys)/endsecs))
+
+	// Total stats.
 	fmt.Printf("Put + Get time: %.3f sec\n", totalalsecs)
-	sz, err := db.FileSize()
+	if err := db.Close(); err != nil {
+		return err
+	}
+	sz, err := dirSize(opts.path)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("File size: %s\n", byteSize(sz))
-	if pdb, ok := db.(*pogreb.DB); ok {
-		printStats(pdb)
-	}
-	return db.Close()
+	return nil
 }

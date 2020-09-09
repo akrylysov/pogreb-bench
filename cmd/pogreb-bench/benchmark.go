@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -83,10 +85,70 @@ func concurrentBatch(keys [][]byte, concurrency int, cb func(gid int, batch [][]
 	return eg.Wait()
 }
 
-func showProgress(gid int, i int, total int) {
-	if i%50000 == 0 {
-		fmt.Printf("Goroutine %d. Processed %d of %d items...\n", gid, i, total)
+func showProgress(cur int, total int) {
+	const (
+		width float32 = 40
+		freq          = 10000
+	)
+	complete := int(float32(cur) / float32(total) * width)
+	if cur%freq != 0 {
+		return
 	}
+	fmt.Printf("\r[%-40s] %d/%d", strings.Repeat("-", complete), cur, total)
+}
+
+func clearLine() {
+	fmt.Print("\r\033[K")
+}
+
+func benchmarkPut(opts options, db kv.Store, keys [][]byte) error {
+	valSrc := make([]byte, opts.maxValueSize)
+	if _, err := rand.Read(valSrc); err != nil {
+		return err
+	}
+
+	var keysProcessed int64
+	err := concurrentBatch(keys, opts.concurrency, func(gid int, batch [][]byte) error {
+		rnd := rand.New(rand.NewSource(int64(rand.Uint64())))
+		for _, k := range batch {
+			if err := db.Put(k, randValue(rnd, valSrc, opts.minValueSize, opts.maxValueSize)); err != nil {
+				return err
+			}
+			showProgress(int(atomic.AddInt64(&keysProcessed, 1)), opts.numKeys)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	showProgress(int(keysProcessed), opts.numKeys)
+	clearLine()
+	return nil
+}
+
+func benchmarkGet(opts options, db kv.Store, keys [][]byte) error {
+	var keysProcessed int64
+	err := concurrentBatch(keys, opts.concurrency, func(gid int, batch [][]byte) error {
+		for _, k := range batch {
+			v, err := db.Get(k)
+			if err != nil {
+				return err
+			}
+			if v == nil {
+				return errors.New("key doesn't exist")
+			}
+			showProgress(int(atomic.AddInt64(&keysProcessed, 1)), opts.numKeys)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	showProgress(int(keysProcessed), opts.numKeys)
+	clearLine()
+	return nil
 }
 
 func benchmark(opts options) error {
@@ -95,40 +157,26 @@ func benchmark(opts options) error {
 		return err
 	}
 
-	fmt.Printf("Number of keys: %d\n", opts.numKeys)
-	fmt.Printf("Minimum key size: %d, maximum key size: %d\n", opts.minKeySize, opts.maxKeySize)
-	fmt.Printf("Minimum value size: %d, maximum value size: %d\n", opts.minValueSize, opts.maxValueSize)
-	fmt.Printf("Concurrency: %d\n", opts.concurrency)
-	fmt.Printf("Running %s benchmark...\n", opts.engine)
+	fmt.Printf("engine: %s\n", opts.engine)
+	fmt.Printf("keys: %d\n", opts.numKeys)
+	fmt.Printf("key size: %d-%d\n", opts.minKeySize, opts.maxKeySize)
+	fmt.Printf("value size %d-%d\n", opts.minValueSize, opts.maxValueSize)
+	fmt.Printf("concurrency: %d\n\n", opts.concurrency)
 
 	keys := generateKeys(opts.numKeys, opts.minKeySize, opts.maxKeySize)
-	valSrc := make([]byte, opts.maxValueSize)
-	if _, err := rand.Read(valSrc); err != nil {
-		return err
-	}
-	forceGC()
+	clearLine()
+
+	var totalElapsed float64
 
 	// Put.
+	forceGC()
 	start := time.Now()
-	err = concurrentBatch(keys, opts.concurrency, func(gid int, batch [][]byte) error {
-		rnd := rand.New(rand.NewSource(int64(rand.Uint64())))
-		for i, k := range batch {
-			if err := db.Put(k, randValue(rnd, valSrc, opts.minValueSize, opts.maxValueSize)); err != nil {
-				return err
-			}
-			if opts.progress {
-				showProgress(gid, i, len(batch))
-			}
-		}
-		return nil
-	})
-	if err != nil {
+	if err := benchmarkPut(opts, db, keys); err != nil {
 		return err
 	}
-
-	endsecs := time.Since(start).Seconds()
-	totalalsecs := endsecs
-	fmt.Printf("Put: %.3f sec, %d ops/sec\n", endsecs, int(float64(opts.numKeys)/endsecs))
+	elapsed := time.Since(start).Seconds()
+	totalElapsed += elapsed
+	fmt.Printf("put: %.3fs\t%d ops/s\n", elapsed, int(float64(opts.numKeys)/elapsed))
 
 	// Reopen DB.
 	if err := db.Close(); err != nil {
@@ -139,34 +187,19 @@ func benchmark(opts options) error {
 	if err != nil {
 		return err
 	}
-	forceGC()
 
-	// Read.
+	// Get.
+	forceGC()
 	start = time.Now()
-	err = concurrentBatch(keys, opts.concurrency, func(gid int, batch [][]byte) error {
-		for i, k := range batch {
-			v, err := db.Get(k)
-			if err != nil {
-				return err
-			}
-			if v == nil {
-				return errors.New("key doesn't exist")
-			}
-			if opts.progress {
-				showProgress(gid, i, len(batch))
-			}
-		}
-		return nil
-	})
-	if err != nil {
+	if err := benchmarkGet(opts, db, keys); err != nil {
 		return err
 	}
-	endsecs = time.Since(start).Seconds()
-	totalalsecs += endsecs
-	fmt.Printf("Get: %.3f sec, %d ops/sec\n", endsecs, int(float64(opts.numKeys)/endsecs))
+	elapsed = time.Since(start).Seconds()
+	totalElapsed += elapsed
+	fmt.Printf("get: %.3fs\t%d ops/s\n", elapsed, int(float64(opts.numKeys)/elapsed))
 
 	// Total stats.
-	fmt.Printf("Put + Get time: %.3f sec\n", totalalsecs)
+	fmt.Printf("\nput + get: %.3fs\n", totalElapsed)
 	if err := db.Close(); err != nil {
 		return err
 	}
@@ -174,6 +207,6 @@ func benchmark(opts options) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("File size: %s\n", byteSize(sz))
+	fmt.Printf("file size: %s\n", byteSize(sz))
 	return nil
 }

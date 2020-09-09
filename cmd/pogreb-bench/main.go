@@ -18,7 +18,6 @@ type options struct {
 	maxValueSize int
 	concurrency  int
 	path         string
-	progress     bool
 	compact      bool
 	profileMode  string
 }
@@ -33,7 +32,6 @@ func main() {
 	flag.IntVar(&opts.maxValueSize, "maxv", 512, "maximum value size")
 	flag.IntVar(&opts.concurrency, "c", 1, "number of concurrent goroutines")
 	flag.StringVar(&opts.path, "p", "", "database path")
-	flag.BoolVar(&opts.progress, "progress", false, "show progress")
 	flag.BoolVar(&opts.compact, "compact", false, "write keys twice and run compaction after")
 	flag.StringVar(&opts.profileMode, "profile", "", "enable profile. cpu, mem, block or mutex")
 
@@ -65,8 +63,8 @@ func main() {
 
 	peakSysMem, cancelMon := monitorMemory(time.Millisecond * 100)
 	if err := benchmark(opts); err != nil {
-		fmt.Fprintf(os.Stderr, "Error running benchmark: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error running benchmark: %v\n", err)
 	}
 	cancelMon()
-	fmt.Printf("Peak Sys Mem: %s\n", byteSize(*peakSysMem))
+	fmt.Printf("peak sys mem: %s\n", byteSize(*peakSysMem))
 }

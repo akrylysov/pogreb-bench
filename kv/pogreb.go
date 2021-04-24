@@ -6,7 +6,7 @@ import (
 )
 
 func newPogreb(path string) (Store, error) {
-	db, err := pogreb.Open(path, &pogreb.Options{FileSystem: fs.OS})
+	db, err := pogreb.Open(path, &pogreb.Options{FileSystem: fs.OSMMap})
 	if err != nil {
 		return nil, err
 	}

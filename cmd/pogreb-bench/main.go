@@ -24,7 +24,7 @@ type options struct {
 
 func main() {
 	var opts options
-	flag.StringVar(&opts.engine, "e", "pogreb", "database engine name. pogreb, goleveldb, bbolt or badger")
+	flag.StringVar(&opts.engine, "e", "pogreb", "database engine name. pogreb, goleveldb, bbolt, badger, or bitcask")
 	flag.IntVar(&opts.numKeys, "n", 100000, "number of keys")
 	flag.IntVar(&opts.minKeySize, "mink", 16, "minimum key size")
 	flag.IntVar(&opts.maxKeySize, "maxk", 64, "maximum key size")
